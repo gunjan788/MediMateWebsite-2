@@ -25,6 +25,9 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, Pill, Clock, Edit, Trash2, Plus } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -443,6 +446,7 @@ interface MedicationCardProps {
 const MedicationCard: React.FC<MedicationCardProps> = ({ medication }) => {
   // Set up the dialog for adding a reminder
   const [isReminderDialogOpen, setIsReminderDialogOpen] = useState(false);
+  const [medications, setMedications] = useState(mockMedications);
   
   const handleAddReminder = () => {
     // Display dialog to add a reminder
@@ -482,20 +486,7 @@ const MedicationCard: React.FC<MedicationCardProps> = ({ medication }) => {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => {
-            setIsEditMode(true);
-            setEditingMedicationId(medication.id);
-            form.reset({
-              name: medication.name,
-              dosage: medication.dosage,
-              frequency: medication.frequency,
-              instructions: medication.instructions || "",
-              startDate: medication.startDate,
-              endDate: medication.endDate,
-              notes: medication.notes || "",
-            });
-            setIsDialogOpen(true);
-          }}
+          onClick={() => editMedication(medication)}
         >
           <Edit className="h-4 w-4 mr-1" /> Edit
         </Button>
@@ -503,11 +494,7 @@ const MedicationCard: React.FC<MedicationCardProps> = ({ medication }) => {
           variant="outline"
           size="sm"
           className="border-red-200 text-red-500 hover:bg-red-50"
-          onClick={() => {
-            if (window.confirm("Are you sure you want to delete this medication?")) {
-              setMedications(medications.filter(med => med.id !== medication.id));
-            }
-          }}
+          onClick={() => deleteMedication(medication.id)}
         >
           <Trash2 className="h-4 w-4 mr-1" /> Delete
         </Button>
