@@ -74,6 +74,131 @@ const sharingFormSchema = z.object({
 
 type SharingFormValues = z.infer<typeof sharingFormSchema>;
 
+// Share Card Component
+interface ShareCardProps {
+  share: {
+    id: number;
+    sharedWithName: string;
+    sharedWithEmail: string;
+    relationship: string;
+    medications: boolean;
+    appointments: boolean;
+    profiles: boolean;
+    expiryDate: Date | null;
+    active: boolean;
+  };
+  onEdit: () => void;
+  onToggleActive: () => void;
+  onDelete: () => void;
+}
+
+const ShareCard: React.FC<ShareCardProps> = ({ share, onEdit, onToggleActive, onDelete }) => {
+  return (
+    <Card className={`hover:shadow-md transition-shadow ${!share.active && 'opacity-75'}`}>
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="text-xl font-medium">{share.sharedWithName}</CardTitle>
+            <CardDescription className="text-sm text-gray-500 mt-1">
+              {share.relationship}
+            </CardDescription>
+          </div>
+          <div>
+            {share.active ? (
+              <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">
+                Active
+              </span>
+            ) : (
+              <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs">
+                Inactive
+              </span>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pb-2">
+        <div className="space-y-3">
+          <div className="flex items-center text-sm">
+            <Mail className="h-4 w-4 mr-2 text-gray-500" />
+            <span className="text-gray-600">{share.sharedWithEmail}</span>
+          </div>
+          
+          {share.expiryDate && (
+            <div className="flex items-center text-sm">
+              <CalendarIcon className="h-4 w-4 mr-2 text-gray-500" />
+              <span className="text-gray-600">
+                Expires: {format(share.expiryDate, "MMMM d, yyyy")}
+              </span>
+            </div>
+          )}
+          
+          <div className="pt-2">
+            <p className="text-sm font-medium text-gray-700 mb-2">Shared Information:</p>
+            <div className="space-y-1">
+              <div className="flex items-center text-sm">
+                {share.medications ? (
+                  <Check className="h-4 w-4 mr-2 text-green-500" />
+                ) : (
+                  <X className="h-4 w-4 mr-2 text-red-500" />
+                )}
+                <span className="text-gray-600">Medications</span>
+              </div>
+              <div className="flex items-center text-sm">
+                {share.appointments ? (
+                  <Check className="h-4 w-4 mr-2 text-green-500" />
+                ) : (
+                  <X className="h-4 w-4 mr-2 text-red-500" />
+                )}
+                <span className="text-gray-600">Appointments</span>
+              </div>
+              <div className="flex items-center text-sm">
+                {share.profiles ? (
+                  <Check className="h-4 w-4 mr-2 text-green-500" />
+                ) : (
+                  <X className="h-4 w-4 mr-2 text-red-500" />
+                )}
+                <span className="text-gray-600">User Profiles</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter className="flex flex-wrap gap-2">
+        <Button variant="outline" size="sm" onClick={onEdit}>
+          <Edit className="h-4 w-4 mr-1" /> Edit
+        </Button>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className={share.active 
+            ? "border-red-200 text-red-500 hover:bg-red-50" 
+            : "border-green-200 text-green-500 hover:bg-green-50"
+          }
+          onClick={onToggleActive}
+        >
+          {share.active ? (
+            <>
+              <X className="h-4 w-4 mr-1" /> Disable
+            </>
+          ) : (
+            <>
+              <Check className="h-4 w-4 mr-1" /> Enable
+            </>
+          )}
+        </Button>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="border-red-200 text-red-500 hover:bg-red-50"
+          onClick={onDelete}
+        >
+          <Trash2 className="h-4 w-4 mr-1" /> Delete
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+};
+
 const Sharing = () => {
   const [sharingList, setSharingList] = useState(mockSharing);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -158,6 +283,31 @@ const Sharing = () => {
     ));
   };
 
+  // Delete a share
+  const deleteShare = (id: number) => {
+    if (window.confirm("Are you sure you want to delete this shared access?")) {
+      setSharingList(sharingList.filter(share => share.id !== id));
+    }
+  };
+
+  // Quick share function
+  const quickShare = () => {
+    const newShare = {
+      id: Math.max(0, ...sharingList.map(s => s.id)) + 1,
+      sharedWithName: "Dr. Quick Share",
+      sharedWithEmail: "doctor@example.com",
+      relationship: "Doctor",
+      medications: true,
+      appointments: true,
+      profiles: false,
+      expiryDate: new Date(new Date().setMonth(new Date().getMonth() + 1)), // 1 month from now
+      active: true,
+    };
+    
+    setSharingList([...sharingList, newShare]);
+    alert("Quick share created! Data shared with Dr. Quick Share for 1 month.");
+  };
+
   // Get active and inactive shares
   const activeShares = sharingList.filter(share => share.active);
   const inactiveShares = sharingList.filter(share => !share.active);
@@ -170,244 +320,253 @@ const Sharing = () => {
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Health Data Sharing</h1>
             <p className="text-gray-600">Share your health information with caregivers, family members, and healthcare providers</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-teal-500 hover:bg-teal-600" onClick={openNewDialog}>
-                <Plus className="mr-2 h-4 w-4" /> Share Data
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[525px]">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingShare ? "Edit Sharing" : "Share Health Data"}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingShare 
-                    ? "Update your health data sharing preferences." 
-                    : "Share your health data with someone you trust."}
-                </DialogDescription>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="sharedWithName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter recipient's name" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          The person who will have access to your health data.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="sharedWithEmail"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="email"
-                            placeholder="Enter recipient's email" 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          We'll send them instructions on how to access your data.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="relationship"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Relationship</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="e.g., Doctor, Family Member, Caregiver" 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="space-y-3">
-                    <FormLabel className="text-base">Shared Information</FormLabel>
-                    <FormDescription>
-                      Select what health data you want to share.
-                    </FormDescription>
-                    
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              className="border-teal-200 text-teal-600 hover:bg-teal-50"
+              onClick={quickShare}
+            >
+              Quick Share with Doctor
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-teal-500 hover:bg-teal-600" onClick={openNewDialog}>
+                  <Plus className="mr-2 h-4 w-4" /> Share Data
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[525px]">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingShare ? "Edit Sharing" : "Share Health Data"}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {editingShare 
+                      ? "Update your health data sharing preferences." 
+                      : "Share your health data with someone you trust."}
+                  </DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <FormField
                       control={form.control}
-                      name="medications"
+                      name="sharedWithName"
                       render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                        <FormItem>
+                          <FormLabel>Name</FormLabel>
                           <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Input placeholder="Enter recipient's name" {...field} />
                           </FormControl>
-                          <div className="space-y-1 leading-none">
-                            <FormLabel>
-                              Medications
-                            </FormLabel>
-                            <FormDescription>
-                              Share your medication list and schedule.
-                            </FormDescription>
-                          </div>
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="appointments"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                          <div className="space-y-1 leading-none">
-                            <FormLabel>
-                              Appointments
-                            </FormLabel>
-                            <FormDescription>
-                              Share your upcoming medical appointments.
-                            </FormDescription>
-                          </div>
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="profiles"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                          <div className="space-y-1 leading-none">
-                            <FormLabel>
-                              User Profiles
-                            </FormLabel>
-                            <FormDescription>
-                              Share your profile information and health notes.
-                            </FormDescription>
-                          </div>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <FormField
-                    control={form.control}
-                    name="expiryDate"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Expiry Date (Optional)</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Never expires</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <div className="p-2 border-b">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => field.onChange(null)}
-                                className="text-xs"
-                              >
-                                Clear (Never Expires)
-                              </Button>
-                            </div>
-                            <Calendar
-                              mode="single"
-                              selected={field.value || undefined}
-                              onSelect={field.onChange}
-                              initialFocus
-                              disabled={date => date < new Date()}
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormDescription>
-                          Access will automatically expire on this date. Leave empty for unlimited access.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="active"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">
-                            Active
-                          </FormLabel>
                           <FormDescription>
-                            Toggle to enable or disable sharing.
+                            The person who will have access to your health data.
                           </FormDescription>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" className="bg-teal-500 hover:bg-teal-600">
-                      {editingShare ? "Update Sharing" : "Share Data"}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="sharedWithEmail"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="email"
+                              placeholder="Enter recipient's email" 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            We'll send them instructions on how to access your data.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="relationship"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Relationship</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="e.g., Doctor, Family Member, Caregiver" 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <div className="space-y-3">
+                      <FormLabel className="text-base">Shared Information</FormLabel>
+                      <FormDescription>
+                        Select what health data you want to share.
+                      </FormDescription>
+                      
+                      <FormField
+                        control={form.control}
+                        name="medications"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>
+                                Medications
+                              </FormLabel>
+                              <FormDescription>
+                                Share your medication list and schedule.
+                              </FormDescription>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="appointments"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>
+                                Appointments
+                              </FormLabel>
+                              <FormDescription>
+                                Share your upcoming medical appointments.
+                              </FormDescription>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="profiles"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>
+                                User Profiles
+                              </FormLabel>
+                              <FormDescription>
+                                Share your profile information and health notes.
+                              </FormDescription>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
+                    <FormField
+                      control={form.control}
+                      name="expiryDate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Expiry Date (Optional)</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(field.value, "PPP")
+                                  ) : (
+                                    <span>Never expires</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <div className="p-2 border-b">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => field.onChange(null)}
+                                  className="text-xs"
+                                >
+                                  Clear (Never Expires)
+                                </Button>
+                              </div>
+                              <Calendar
+                                mode="single"
+                                selected={field.value || undefined}
+                                onSelect={field.onChange}
+                                initialFocus
+                                disabled={date => date < new Date()}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormDescription>
+                            Access will automatically expire on this date. Leave empty for unlimited access.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="active"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">
+                              Active
+                            </FormLabel>
+                            <FormDescription>
+                              Toggle to enable or disable sharing.
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" className="bg-teal-500 hover:bg-teal-600">
+                        {editingShare ? "Update Sharing" : "Share Data"}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         <div className="space-y-8">
@@ -437,6 +596,7 @@ const Sharing = () => {
                     share={share}
                     onEdit={() => openEditDialog(share)}
                     onToggleActive={() => toggleActive(share.id)}
+                    onDelete={() => deleteShare(share.id)}
                   />
                 ))}
               </div>
@@ -454,6 +614,7 @@ const Sharing = () => {
                     share={share}
                     onEdit={() => openEditDialog(share)}
                     onToggleActive={() => toggleActive(share.id)}
+                    onDelete={() => deleteShare(share.id)}
                   />
                 ))}
               </div>
@@ -462,122 +623,6 @@ const Sharing = () => {
         </div>
       </div>
     </div>
-  );
-};
-
-// Share Card Component
-interface ShareCardProps {
-  share: {
-    id: number;
-    sharedWithName: string;
-    sharedWithEmail: string;
-    relationship: string;
-    medications: boolean;
-    appointments: boolean;
-    profiles: boolean;
-    expiryDate: Date | null;
-    active: boolean;
-  };
-  onEdit: () => void;
-  onToggleActive: () => void;
-}
-
-const ShareCard: React.FC<ShareCardProps> = ({ share, onEdit, onToggleActive }) => {
-  return (
-    <Card className={`hover:shadow-md transition-shadow ${!share.active && 'opacity-75'}`}>
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className="text-xl font-medium">{share.sharedWithName}</CardTitle>
-            <CardDescription className="text-sm text-gray-500 mt-1">
-              {share.relationship}
-            </CardDescription>
-          </div>
-          <div>
-            {share.active ? (
-              <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">
-                Active
-              </span>
-            ) : (
-              <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs">
-                Inactive
-              </span>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pb-2">
-        <div className="space-y-3">
-          <div className="flex items-center text-sm">
-            <Mail className="h-4 w-4 mr-2 text-gray-500" />
-            <span className="text-gray-600">{share.sharedWithEmail}</span>
-          </div>
-          
-          {share.expiryDate && (
-            <div className="flex items-center text-sm">
-              <CalendarIcon className="h-4 w-4 mr-2 text-gray-500" />
-              <span className="text-gray-600">
-                Expires: {format(share.expiryDate, "MMMM d, yyyy")}
-              </span>
-            </div>
-          )}
-          
-          <div className="pt-2">
-            <p className="text-sm font-medium text-gray-700 mb-2">Shared Information:</p>
-            <div className="space-y-1">
-              <div className="flex items-center text-sm">
-                {share.medications ? (
-                  <Check className="h-4 w-4 mr-2 text-green-500" />
-                ) : (
-                  <X className="h-4 w-4 mr-2 text-red-500" />
-                )}
-                <span className="text-gray-600">Medications</span>
-              </div>
-              <div className="flex items-center text-sm">
-                {share.appointments ? (
-                  <Check className="h-4 w-4 mr-2 text-green-500" />
-                ) : (
-                  <X className="h-4 w-4 mr-2 text-red-500" />
-                )}
-                <span className="text-gray-600">Appointments</span>
-              </div>
-              <div className="flex items-center text-sm">
-                {share.profiles ? (
-                  <Check className="h-4 w-4 mr-2 text-green-500" />
-                ) : (
-                  <X className="h-4 w-4 mr-2 text-red-500" />
-                )}
-                <span className="text-gray-600">User Profiles</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-      <CardFooter className="flex justify-between">
-        <Button variant="outline" size="sm" onClick={onEdit}>
-          <Edit className="h-4 w-4 mr-1" /> Edit
-        </Button>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className={share.active 
-            ? "border-red-200 text-red-500 hover:bg-red-50" 
-            : "border-green-200 text-green-500 hover:bg-green-50"
-          }
-          onClick={onToggleActive}
-        >
-          {share.active ? (
-            <>
-              <X className="h-4 w-4 mr-1" /> Disable
-            </>
-          ) : (
-            <>
-              <Check className="h-4 w-4 mr-1" /> Enable
-            </>
-          )}
-        </Button>
-      </CardFooter>
-    </Card>
   );
 };
 

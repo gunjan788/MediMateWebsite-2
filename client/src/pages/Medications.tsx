@@ -107,6 +107,9 @@ const Medications = () => {
   const activeMedications = medications.filter(med => med.active);
   const inactiveMedications = medications.filter(med => !med.active);
 
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingMedicationId, setEditingMedicationId] = useState<number | null>(null);
+
   // Form setup
   const form = useForm<MedicationFormValues>({
     resolver: zodResolver(medicationFormSchema),
@@ -119,16 +122,52 @@ const Medications = () => {
     },
   });
 
+  // Edit medication
+  const editMedication = (medication: any) => {
+    setIsEditMode(true);
+    setEditingMedicationId(medication.id);
+    form.reset({
+      name: medication.name,
+      dosage: medication.dosage,
+      frequency: medication.frequency,
+      instructions: medication.instructions || "",
+      startDate: medication.startDate,
+      endDate: medication.endDate,
+      notes: medication.notes || "",
+    });
+    setIsDialogOpen(true);
+  };
+
+  // Delete medication
+  const deleteMedication = (id: number) => {
+    if (window.confirm("Are you sure you want to delete this medication?")) {
+      setMedications(medications.filter(med => med.id !== id));
+    }
+  };
+
   const onSubmit = (data: MedicationFormValues) => {
     console.log(data);
-    // Add the new medication to the list
-    const newMedication = {
-      id: medications.length + 1,
-      ...data,
-      active: true,
-    };
-    setMedications([...medications, newMedication]);
+    
+    if (isEditMode && editingMedicationId) {
+      // Update existing medication
+      setMedications(medications.map(med => 
+        med.id === editingMedicationId 
+          ? { ...med, ...data } 
+          : med
+      ));
+    } else {
+      // Add new medication
+      const newMedication = {
+        id: medications.length + 1,
+        ...data,
+        active: true,
+      };
+      setMedications([...medications, newMedication]);
+    }
+    
     setIsDialogOpen(false);
+    setIsEditMode(false);
+    setEditingMedicationId(null);
     form.reset();
   };
 
@@ -402,6 +441,15 @@ interface MedicationCardProps {
 }
 
 const MedicationCard: React.FC<MedicationCardProps> = ({ medication }) => {
+  // Set up the dialog for adding a reminder
+  const [isReminderDialogOpen, setIsReminderDialogOpen] = useState(false);
+  
+  const handleAddReminder = () => {
+    // Display dialog to add a reminder
+    setIsReminderDialogOpen(true);
+    console.log(`Adding reminder for medication: ${medication.name}`);
+  };
+  
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-2">
@@ -430,14 +478,103 @@ const MedicationCard: React.FC<MedicationCardProps> = ({ medication }) => {
           </span>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between">
-        <Button variant="outline" size="sm">
+      <CardFooter className="flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setIsEditMode(true);
+            setEditingMedicationId(medication.id);
+            form.reset({
+              name: medication.name,
+              dosage: medication.dosage,
+              frequency: medication.frequency,
+              instructions: medication.instructions || "",
+              startDate: medication.startDate,
+              endDate: medication.endDate,
+              notes: medication.notes || "",
+            });
+            setIsDialogOpen(true);
+          }}
+        >
           <Edit className="h-4 w-4 mr-1" /> Edit
         </Button>
-        <Button variant="outline" size="sm" className="border-red-200 text-red-500 hover:bg-red-50">
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-red-200 text-red-500 hover:bg-red-50"
+          onClick={() => {
+            if (window.confirm("Are you sure you want to delete this medication?")) {
+              setMedications(medications.filter(med => med.id !== medication.id));
+            }
+          }}
+        >
           <Trash2 className="h-4 w-4 mr-1" /> Delete
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-teal-200 text-teal-600 hover:bg-teal-50"
+          onClick={handleAddReminder}
+        >
+          <Clock className="h-4 w-4 mr-1" /> Add Reminder
+        </Button>
       </CardFooter>
+      
+      {/* Reminder Dialog */}
+      <Dialog open={isReminderDialogOpen} onOpenChange={setIsReminderDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add Reminder for {medication.name}</DialogTitle>
+            <DialogDescription>
+              Set up reminders for when to take this medication.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="reminder-time">Time</Label>
+                <input 
+                  id="reminder-time"
+                  type="time" 
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Days</Label>
+                <div className="grid grid-cols-7 gap-2">
+                  {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
+                    <div key={index} className="flex flex-col items-center">
+                      <Checkbox id={`day-${index}`} defaultChecked />
+                      <Label htmlFor={`day-${index}`} className="mt-1 text-xs">{day}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch id="audio-enabled" defaultChecked />
+                <Label htmlFor="audio-enabled">Audio notifications</Label>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsReminderDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              className="bg-teal-500 hover:bg-teal-600"
+              onClick={() => {
+                console.log("Reminder saved!");
+                setIsReminderDialogOpen(false);
+              }}
+            >
+              Save Reminder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
