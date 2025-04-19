@@ -1,0 +1,140 @@
+Create a fully functional, mobile-responsive healthcare website called MediMate, inspired by the layout and content in the image:
+
+Reference Image: Mobile (1).png (UI design reference)
+
+🎯 Purpose
+MediMate is a free pill reminder and medication tracker web application. It allows users to:
+
+Manage and track medications
+
+Set daily pill reminders
+
+Schedule doctor’s appointments
+
+Share health data with family/friends
+
+Add up to 3 personal profiles per account
+
+Access accounts globally through shared invites
+
+🖼️ UI Design & Styling
+Use React (preferably with Vite or Next.js)
+
+Style with Tailwind CSS
+
+Follow a modern healthcare aesthetic
+
+Teal and black color palette
+
+Rounded cards and buttons
+
+Mobile-first responsive layout
+
+Hero image with phone mockups
+
+Download badges for App Store & Google Play
+
+Accessible and lightweight design
+
+✅ Sections & Features to Implement
+1. 🏠 Hero Section
+App name: MediMate with logo
+
+Catchphrase:
+"Why be worried about forgetting to take your medicine when you have MediMate"
+
+Phone mockup visuals (can be static images or animation)
+
+App Store and Google Play buttons
+
+2. 📘 About Section
+Descriptive paragraph about MediMate:
+
+“MediMate is a free pill reminder and medication tracker app. You may make doctor’s appointments, learn more about the medications you’re taking and their side effects, track your health, and share your health status with your family and friends. Up to three people profiles can be added in an account at once, and anyone from anywhere in the world can view your loved one’s account by invitation.”
+
+3. ⭐ Features Section (with annotations)
+Design a responsive card layout or interactive diagram showing:
+
+Add/edit medications
+
+Create & manage 3 user profiles
+
+Audio interactions (UI only, no actual audio processing)
+
+Schedule doctor appointments
+
+Medication calendar
+
+Reminders
+
+Language & theme switcher
+
+Invite family members
+
+Medication info and side effect tracking
+
+App tutorials & user guide
+
+4. ✉️ Contact Section
+Form Fields:
+
+First Name
+
+Last Name
+
+Email
+
+Phone number (optional)
+
+Reason for contact
+
+Message
+
+Checkbox:
+
+Agree to Privacy Policy and Terms
+
+Styled Submit button
+
+5. 🔗 Footer
+Quick Links: Resources, Surveys, Press Releases, Careers
+
+Social Icons: Instagram, Twitter, Facebook
+
+Download badges
+
+Copyright: © MEDIMATE 2025
+
+🧑‍💻 Technical Specs
+🧱 Tech Stack
+Frontend: React (Vite or Next.js)
+
+Styling: Tailwind CSS
+
+Components:
+
+HeroSection, AboutSection, FeaturesSection, ContactForm, Footer
+
+Routing (if using Next.js or React Router):
+
+Home /
+
+Contact /contact (optional)
+
+🔗 Backend Readiness
+(Include hooks for real backend integration later)
+
+Contact form sends data to /api/contact (mock or real backend)
+
+Medication management uses mock local state (later connect to DB)
+
+Profile data & reminders stored in state (ready for backend connection)
+
+🔒 Optional Advanced Features
+Dark/Light mode toggle using Tailwind
+
+Simulated push reminder using setTimeout() or browser Notification API
+
+Multi-language support (EN/ES toggle)
+
+Responsive animation for mockup cards
