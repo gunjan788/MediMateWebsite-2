@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -19,7 +19,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { 
-  Bell, Clock, Plus, Edit, Trash2, Volume2, VolumeX 
+  Bell, Clock, Plus, Edit, Trash2, Volume2, VolumeX, Mic
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -100,6 +100,8 @@ const reminderFormSchema = z.object({
   days: z.array(z.string()).min(1, { message: "Please select at least one day" }),
   audioEnabled: z.boolean().default(true),
   audioType: z.string().default("default"),
+  useVoiceReminder: z.boolean().default(false),
+  voiceRecording: z.string().optional(),
 });
 
 type ReminderFormValues = z.infer<typeof reminderFormSchema>;
@@ -163,8 +165,15 @@ const Reminders = () => {
         days: data.days,
         audioEnabled: data.audioEnabled,
         audioType: data.audioType,
+        useVoiceReminder: data.useVoiceReminder,
+        voiceRecording: data.voiceRecording,
         active: true,
       };
+      
+      console.log("New reminder with voice recording:", data.useVoiceReminder);
+      if (data.useVoiceReminder && data.voiceRecording) {
+        console.log("Voice recording added successfully!");
+      }
       
       setReminders([...reminders, newReminder]);
       setIsDialogOpen(false);
@@ -346,6 +355,31 @@ const Reminders = () => {
                         </FormItem>
                       )}
                     />
+                  )}
+                  
+                  <FormField
+                    control={form.control}
+                    name="useVoiceReminder"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Voice Reminder</FormLabel>
+                          <FormDescription>
+                            Record a voice message to play when this reminder is triggered.
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {form.watch("useVoiceReminder") && (
+                    <VoiceRecorder form={form} />
                   )}
                   
                   <DialogFooter>
@@ -537,6 +571,8 @@ interface ReminderCardProps {
     days: string[];
     audioEnabled: boolean;
     audioType: string;
+    useVoiceReminder?: boolean;
+    voiceRecording?: string;
     active: boolean;
   };
 }
@@ -582,6 +618,185 @@ const ReminderCard: React.FC<ReminderCardProps> = ({ reminder }) => {
         </Button>
       </CardFooter>
     </Card>
+  );
+};
+
+// Voice Recorder Component
+interface VoiceRecorderProps {
+  form: any;
+}
+
+const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ form }) => {
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [audioURL, setAudioURL] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
+  const timerRef = useRef<number | null>(null);
+
+  // Start recording
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        const url = URL.createObjectURL(audioBlob);
+        setAudioURL(url);
+        
+        // Convert blob to base64 string for form storage
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          form.setValue('voiceRecording', base64data);
+        };
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      
+      // Start timer
+      const startTime = Date.now();
+      timerRef.current = window.setInterval(() => {
+        const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+        setRecordingTime(elapsedTime);
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      alert('Could not access microphone. Please check your device permissions.');
+    }
+  };
+
+  // Stop recording
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      
+      // Stop all audio tracks
+      if (mediaRecorderRef.current.stream) {
+        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      }
+      
+      // Clear timer
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+  };
+
+  // Play recorded audio
+  const playRecording = () => {
+    if (audioURL) {
+      const audio = new Audio(audioURL);
+      audio.play();
+    }
+  };
+
+  // Record a new audio
+  const newRecording = () => {
+    setAudioURL(null);
+    form.setValue('voiceRecording', '');
+  };
+
+  // Format the time for display
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Clean up when component unmounts
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
+        if (mediaRecorderRef.current.stream) {
+          mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+        }
+      }
+    };
+  }, []);
+
+  return (
+    <div className="border rounded-lg p-4 space-y-4">
+      <div className="flex flex-col space-y-2">
+        <p className="font-medium text-gray-700">Voice Reminder</p>
+        <p className="text-sm text-gray-500">Record a voice message to be played when this reminder is triggered.</p>
+      </div>
+
+      {!audioURL ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-center h-16 bg-gray-100 rounded-lg">
+            {isRecording ? (
+              <p className="text-red-500 font-medium">Recording... {formatTime(recordingTime)}</p>
+            ) : (
+              <p className="text-gray-500">Press the button to start recording</p>
+            )}
+          </div>
+          
+          <div className="flex justify-center">
+            {!isRecording ? (
+              <Button 
+                type="button"
+                onClick={startRecording}
+                className="bg-teal-500 hover:bg-teal-600"
+              >
+                <Mic className="mr-2 h-4 w-4" /> Start Recording
+              </Button>
+            ) : (
+              <Button 
+                type="button"
+                onClick={stopRecording}
+                variant="outline"
+                className="border-red-200 text-red-500 hover:bg-red-50"
+              >
+                Stop Recording
+              </Button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex items-center justify-center h-16 bg-gray-100 rounded-lg">
+            <p className="text-teal-500 font-medium">Voice reminder recorded successfully!</p>
+          </div>
+          
+          <div className="flex justify-center space-x-4">
+            <Button 
+              type="button"
+              onClick={playRecording}
+              variant="outline"
+            >
+              <Volume2 className="mr-2 h-4 w-4" /> Play
+            </Button>
+            <Button 
+              type="button"
+              onClick={newRecording}
+              variant="outline"
+              className="border-red-200 text-red-500 hover:bg-red-50"
+            >
+              Record New
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
