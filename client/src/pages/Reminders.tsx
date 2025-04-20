@@ -195,7 +195,7 @@ const Reminders = () => {
                 <Plus className="mr-2 h-4 w-4" /> Add Reminder
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[525px]">
+            <DialogContent className="sm:max-w-[90%] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add New Reminder</DialogTitle>
                 <DialogDescription>
@@ -203,7 +203,7 @@ const Reminders = () => {
                 </DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
                   <FormField
                     control={form.control}
                     name="medicationId"
@@ -264,7 +264,7 @@ const Reminders = () => {
                             Select the days when this reminder should be active.
                           </FormDescription>
                         </div>
-                        <div className="space-y-2">
+                        <div className="grid grid-cols-3 sm:grid-cols-7 gap-2">
                           {daysOfWeek.map((day) => (
                             <FormField
                               key={day.id}
@@ -274,7 +274,7 @@ const Reminders = () => {
                                 return (
                                   <FormItem
                                     key={day.id}
-                                    className="flex flex-row items-start space-x-3 space-y-0"
+                                    className="flex flex-col items-center space-y-1"
                                   >
                                     <FormControl>
                                       <Checkbox
@@ -290,8 +290,8 @@ const Reminders = () => {
                                         }}
                                       />
                                     </FormControl>
-                                    <FormLabel className="font-normal">
-                                      {day.label}
+                                    <FormLabel className="font-normal text-xs">
+                                      {day.label.substring(0, 3)}
                                     </FormLabel>
                                   </FormItem>
                                 )
@@ -464,11 +464,32 @@ const Reminders = () => {
                             </p>
                           </div>
                           <div className="flex items-center">
-                            {reminder.audioEnabled ? (
-                              <Volume2 className="h-4 w-4 text-teal-500 mr-4" />
-                            ) : (
-                              <VolumeX className="h-4 w-4 text-gray-400 mr-4" />
-                            )}
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 p-0 mr-1" 
+                              onClick={() => {
+                                // Create and play audio
+                                const audio = new Audio();
+                                audio.src = reminder.audioType === 'default' 
+                                  ? "https://assets.mixkit.co/active_storage/sfx/212/212-preview.mp3"
+                                  : reminder.audioType === 'gentle'
+                                  ? "https://assets.mixkit.co/active_storage/sfx/2471/2471-preview.mp3"
+                                  : reminder.audioType === 'chime'
+                                  ? "https://assets.mixkit.co/active_storage/sfx/1862/1862-preview.mp3"
+                                  : "https://assets.mixkit.co/active_storage/sfx/209/209-preview.mp3";
+                                audio.play().catch(e => console.error("Error playing sound:", e));
+                              }}
+                            >
+                              <span>▶</span>
+                            </Button>
+                            <div className="mr-2">
+                              {reminder.audioEnabled ? (
+                                <Volume2 className="h-4 w-4 text-teal-500" />
+                              ) : (
+                                <VolumeX className="h-4 w-4 text-gray-400" />
+                              )}
+                            </div>
                             <Button variant="ghost" size="sm" className="mr-1">
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -578,6 +599,58 @@ interface ReminderCardProps {
 }
 
 const ReminderCard: React.FC<ReminderCardProps> = ({ reminder }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(!reminder.audioEnabled);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+  // Audio URLs for different sound types
+  const audioSources = {
+    default: "https://assets.mixkit.co/active_storage/sfx/212/212-preview.mp3",
+    gentle: "https://assets.mixkit.co/active_storage/sfx/2471/2471-preview.mp3",
+    chime: "https://assets.mixkit.co/active_storage/sfx/1862/1862-preview.mp3",
+    urgent: "https://assets.mixkit.co/active_storage/sfx/209/209-preview.mp3"
+  };
+  
+  // Handle playing the alarm sound
+  const playSound = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        setIsPlaying(false);
+      } else {
+        // If there's a voice recording, play that instead of the alarm sound
+        if (reminder.useVoiceReminder && reminder.voiceRecording) {
+          const audio = new Audio(reminder.voiceRecording);
+          audio.onended = () => setIsPlaying(false);
+          audio.play()
+            .then(() => setIsPlaying(true))
+            .catch(err => {
+              console.error("Error playing voice recording:", err);
+              // Fallback to regular alarm sound
+              audioRef.current?.play()
+                .then(() => setIsPlaying(true))
+                .catch(err => console.error("Error playing audio:", err));
+            });
+        } else {
+          audioRef.current.play()
+            .then(() => setIsPlaying(true))
+            .catch(err => console.error("Error playing audio:", err));
+        }
+      }
+    }
+  };
+  
+  // Handle toggling mute state
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+  };
+  
+  // Handle when audio playback ends
+  const handleAudioEnded = () => {
+    setIsPlaying(false);
+  };
+  
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-2">
@@ -585,12 +658,31 @@ const ReminderCard: React.FC<ReminderCardProps> = ({ reminder }) => {
           <CardTitle className="text-xl font-medium">
             {formatTime(reminder.time)}
           </CardTitle>
-          <div className="flex items-center">
-            {reminder.audioEnabled ? (
-              <Volume2 className="h-5 w-5 text-teal-500" />
-            ) : (
-              <VolumeX className="h-5 w-5 text-gray-400" />
-            )}
+          <div className="flex items-center space-x-2">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 p-0" 
+              onClick={playSound}
+            >
+              {isPlaying ? (
+                <span className="text-red-500 animate-pulse">▶</span>
+              ) : (
+                <span>▶</span>
+              )}
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 p-0" 
+              onClick={toggleMute}
+            >
+              {isMuted ? (
+                <VolumeX className="h-5 w-5 text-gray-400" />
+              ) : (
+                <Volume2 className="h-5 w-5 text-teal-500" />
+              )}
+            </Button>
           </div>
         </div>
       </CardHeader>
@@ -608,6 +700,13 @@ const ReminderCard: React.FC<ReminderCardProps> = ({ reminder }) => {
             <p>Audio type: {reminder.audioType}</p>
           </div>
         )}
+        {reminder.useVoiceReminder && (
+          <div className="text-sm text-gray-600 mt-1">
+            <p className="flex items-center">
+              <Mic className="h-4 w-4 mr-1 text-teal-500" /> Voice reminder enabled
+            </p>
+          </div>
+        )}
       </CardContent>
       <CardFooter className="flex justify-between">
         <Button variant="outline" size="sm">
@@ -617,6 +716,14 @@ const ReminderCard: React.FC<ReminderCardProps> = ({ reminder }) => {
           <Trash2 className="h-4 w-4 mr-1" /> Delete
         </Button>
       </CardFooter>
+      
+      {/* Hidden audio element */}
+      <audio 
+        ref={audioRef} 
+        src={audioSources[reminder.audioType as keyof typeof audioSources]} 
+        onEnded={handleAudioEnded}
+        muted={isMuted}
+      />
     </Card>
   );
 };
